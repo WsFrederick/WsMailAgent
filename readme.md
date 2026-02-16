@@ -1,71 +1,85 @@
-📧 MailBot v1.0: AI-gestützte ArbeitsanweisungenDieses Tutorial beschreibt, wie du Microsoft 365 Business Mails automatisiert ausliest und lokal mit Ollama analysierst, um den täglichen Mail-Wahnsinn zu bändigen.🛠 1. Microsoft Entra ID (Azure) SetupDa Business-Accounts kein einfaches Passwort-Login erlauben, müssen wir eine App registrieren.Schritt-für-Schritt Klickpfad:Portal: Öffne das Microsoft Entra ID Portal.Registrierung: Identity > Applications > App registrations > New registration.Name: WsMailBotAccount Type: Accounts in this organizational directory only.Authentifizierung (Der "Redirect" Fix):Gehe zu Authentication > + Add a platform > Web.Redirect URI: https://login.microsoftonline.com/common/oauth2/nativeclientGeheimnis (Secret):Gehe zu Certificates & secrets > + New client secret.WICHTIG: Kopiere sofort den Inhalt der Spalte Wert (Value). Die Secret ID ist nutzlos für den Code.Berechtigungen:API Permissions > Add a permission > Microsoft Graph > Delegated permissions.Aktiviere: Mail.Read und offline_access (für dauerhaften Login).Klicke auf "Grant admin consent for [Firmenname]".💻 2. Lokale InstallationStelle sicher, dass Python 3.10+ installiert ist und Ollama im Hintergrund läuft.Bash# Notwendige Libraries
-pip install O365 ollama
+# 📧 WsMailBot
 
-# KI-Modell herunterladen
-ollama pull llama3.1:8b
-📄 3. Der Code (main.py)Dieses Snippet verbindet die MS Graph API mit deiner lokalen KI.Pythonimport ollama
-from O365 import Account
+**WsMailBot** ist ein intelligenter E-Mail-Agent für Microsoft 365. Er nutzt lokale Large Language Models (LLMs) via **Ollama**, um eingehende E-Mails zu klassifizieren, Zusammenfassungen zu erstellen und geschäftskritische Dokumente wie Rechnungen automatisch zu erkennen.
 
-# --- KONFIGURATION ---
-CLIENT_ID = 'DEINE_CLIENT_ID_AUS_AZURE'
-SECRET_VALUE = 'DEIN_SECRET_WERT_AUS_AZURE'
-TENANT_ID = 'DEINE_MANDANTEN_ID_AUS_AZURE'
-TARGET_MAIL = 'DEINE_GESUCHTE_ABSENDER_ADRESSE'
+---
 
-credentials = (CLIENT_ID, SECRET_VALUE)
-account = Account(credentials, tenant_id=TENANT_ID)
-scopes = ['https://graph.microsoft.com/Mail.Read', 'offline_access']
+## 🚀 Features
 
-# --- AUTHENTIFIZIERUNG ---
-if not account.is_authenticated:
-    # Generiert URL -> Browser Login -> Redirect URL zurück ins Terminal kopieren
-    account.authenticate(scopes=scopes)
+* **Hybrid-Klassifizierung:** Kombiniert Hard-Rules (Keywords, Regex, Betreff-Analyse) mit KI-Logik für maximale Präzision.
+* **Intelligente Kategorien:** * 💰 `INVOICE`: Erkennt echte Rechnungen (mit Anhang-Check).
+    * 🚀 `PROJECT`: Identifiziert menschliche Kommunikation und Rückfragen.
+    * ⚙️ `SYSTEM`: Filtert automatische Benachrichtigungen und Backups.
+    * 📰 `NEWSLETTER`: Markiert Marketing-Mails.
+* **Datenschutz:** Die Analyse erfolgt zu 100% lokal über Ollama. Keine Mail-Inhalte verlassen deine Infrastruktur.
+* **O365 Integration:** Nahtlose Anbindung an Microsoft Graph API (Business Accounts).
 
+---
 
-def process_mails():
-    mailbox = account.mailbox()
+## 🛠 Setup & Installation
 
-    # 1. Zeitraum berechnen (Heute minus 3 Tage)
-    # Microsoft erwartet das Format: YYYY-MM-DDTHH:MM:SSZ
-    three_days_ago = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
+### 1. Microsoft Entra ID (Azure) App-Registrierung
+Damit der Bot auf deine Mails zugreifen kann, musst du im [Entra Portal](https://entra.microsoft.com/) eine App registrieren:
+1.  **Platform:** Web
+2.  **Redirect URI:** `https://login.microsoftonline.com/common/oauth2/nativeclient`
+3.  **Permissions (Delegated):** `Mail.Read`, `Mail.ReadWrite`, `offline_access`
+4.  **Credentials:** Erstelle ein *Client Secret* und notiere dir den **Value** (nicht die ID).
 
-    # 2. Präziser Filter für die API
-    # Wir bauen den Filter dynamisch zusammen
-    # Das erzeugt: (from/emailAddress/address eq 'A' or from/emailAddress/address eq 'B')
-    email_filter = " or ".join([f"from/emailAddress/address eq '{email}'" for email in TARGET_MAILS])
+### 2. Lokale Vorbereitung
+* Stelle sicher, dass [Ollama](https://ollama.ai/) installiert ist und läuft.
+* Modell laden: `ollama pull llama3.1`
 
-    # Wir kombinieren Absender UND Datum. 
-    # 'ge' steht für 'greater or equal' (größer oder gleich)
-    # Kombiniert mit dem Datums-Filter von vorhin
-    query = f"({email_filter}) and receivedDateTime ge {three_days_ago}"
-    print(f"Suche Mails ab dem {three_days_ago}...")
+### 3. Installation
+```bash
+# Repository klonen
+git clone git@github.com:WsFrederick/WsMailAgent.git
+cd WsMailAgent
 
-    # 3. Abruf der Mails 
-    messages_generator = mailbox.get_messages(limit=25, query=query)
+# Abhängigkeiten installieren
+pip install -r requirements.txt
 
-    # In Liste umwandeln und lokal sortieren (Sicherheitsnetz)
-    message_list = list(messages_generator)
-    message_list.sort(key=lambda m: m.received, reverse=True)
+### 4. Konfiguration
+Stelle sicher, dass deine Zugangsdaten in der `settings.py` (oder einer `.env`) liegen. **Wichtig:** Diese Datei niemals ins Git einchecken!
 
-    if not message_list:
-        print("Keine neuen Mails im Zeitraum gefunden.")
-        return
+---
 
-    for msg in message_list:
-        print(f"\n📩 Analysiere: {msg.subject} ({msg.received.strftime('%d.%m. %H:%M')})")
-        
-        # Lokale KI-Analyse
-        prompt = f"Extrahiere nur die Aufgaben als Liste aus dieser Mail:\n\n{msg.body_preview}"
-        
-        response = ollama.chat(model='llama3.1', messages=[
-            {'role': 'system', 'content': 'Du bist ein Assistent für Aufgabenmanagement. Antworte kurz auf Deutsch.'},
-            {'role': 'user', 'content': prompt}
-        ])
-        
-        print(f"🤖 KI-Zusammenfassung:\n{response['message']['content']}")
+## 🖥 Nutzung
 
-if __name__ == "__main__":
-    process_mails()
+Starte den Bot über die Konsole. Über Flags kannst du den Lauf steuern:
 
-    
-⚠️ 4. Troubleshooting & Snippet-WissenFehlerUrsacheLösungAADSTS7000215Falsches SecretDu hast die Secret ID statt des Values genutzt.AADSTS700025Plattform-MixApp ist als "Public" (Desktop) statt "Web" markiert.Error 400 (Bad Request)Filter-SyntaxDie API braucht eq und einfache Anführungszeichen '.Token ExpiredKein RefreshStelle sicher, dass offline_access in den Scopes steht.
+```bash
+# Standard-Lauf (Letzte 3 Tage, nur Analyse)
+python main.py --ai
+
+# Nur ungelesene Mails der letzten 24h mit Anhang-Check
+python main.py --ai --unread-only --days 1 --attachments
+
+# Spezifische Absender prüfen
+python main.py --ai --from-mail info@mocoapp.com support@microsoft.com
+
+### CLI-Optionen:
+
+| Flag | Beschreibung |
+| :--- | :--- |
+| `--ai` | Aktiviert die KI-Klassifizierung & Summary |
+| `--unread-only` | Verarbeitet nur ungelesene Nachrichten |
+| `--days X` | Zeitraum der Mails in Tagen (default: 3) |
+| `--attachments` | Listet Anhänge auf (Vorbereitung für Export) |
+| `--mark-as-read` | Markiert Mails nach der Analyse als gelesen |
+
+---
+
+## 📂 Projektstruktur
+
+* `main.py`: Einstiegspunkt und CLI-Logik.
+* `core/`:
+    * `mail_client.py`: Handling der O365-Verbindung und Filter-Queries.
+    * `classifier.py`: Die Hybrid-Logik (Keywords + Ollama JSON API).
+* `features/`:
+    * `attachment_list.py`: Utility zum Auslesen von Anhängen.
+* `settings.py`: Zentrale Konfiguration (nicht im Git!).
+
+---
+
+## 📝 Lizenz
+Privates Projekt von Witchcraft Solutions GmbH.
