@@ -30,7 +30,7 @@ Damit der Bot auf deine Mails zugreifen kann, musst du im [Entra Portal](https:/
 * Modell laden: `ollama pull llama3.1`
 
 ### 3. Installation
-```bash
+
 # Repository klonen
 git clone git@github.com:WsFrederick/WsMailAgent.git
 cd WsMailAgent
@@ -47,7 +47,6 @@ Stelle sicher, dass deine Zugangsdaten in der `settings.py` (oder einer `.env`) 
 
 Starte den Bot über die Konsole. Über Flags kannst du den Lauf steuern:
 
-```bash
 # Standard-Lauf (Letzte 3 Tage, nur Analyse)
 python main.py --ai
 
