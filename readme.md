@@ -39,7 +39,12 @@ cd WsMailAgent
 pip install -r requirements.txt
 
 ### 4. Konfiguration
-Stelle sicher, dass deine Zugangsdaten in der `settings.py` (oder einer `.env`) liegen. **Wichtig:** Diese Datei niemals ins Git einchecken!
+Stelle sicher, dass deine Zugangsdaten in einer `.env` liegen. **Wichtig:** Diese Datei niemals ins Git einchecken!
+
+Die `.env` braucht folgende Werte:
+CLIENT_ID=
+SECRET_VALUE=
+TENANT_ID=
 
 ---
 
@@ -54,17 +59,17 @@ python main.py --ai
 python main.py --ai --unread-only --days 1 --attachments
 
 # Spezifische Absender prüfen
-python main.py --ai --from-mail info@mocoapp.com support@microsoft.com
+python main.py --ai --from-mail support@microsoft.com
 
 ### CLI-Optionen:
 
 | Flag | Beschreibung |
 | :--- | :--- |
 | `--ai` | Aktiviert die KI-Klassifizierung & Summary |
-| `--unread-only` | Verarbeitet nur ungelesene Nachrichten |
+| `--unread-only` | Verarbeitet nur ungelesene Nachrichten (In zukunft default, dann --read-all flag) |
 | `--days X` | Zeitraum der Mails in Tagen (default: 3) |
-| `--attachments` | Listet Anhänge auf (Vorbereitung für Export) |
-| `--mark-as-read` | Markiert Mails nach der Analyse als gelesen |
+| `--attachments` | Listet Anhänge auf (Vorbereitung für Export in Zukunft) |
+| `--mark-as-read` | Markiert Mails nach der Analyse als gelesen (In zukunft default, dann --dont-mark-as-read flag) |
 
 ---
 
@@ -76,9 +81,9 @@ python main.py --ai --from-mail info@mocoapp.com support@microsoft.com
     * `classifier.py`: Die Hybrid-Logik (Keywords + Ollama JSON API).
 * `features/`:
     * `attachment_list.py`: Utility zum Auslesen von Anhängen.
-* `settings.py`: Zentrale Konfiguration (nicht im Git!).
+* `settings.py`: Zentrale Konfiguration der Flags und Einstellungen.
 
 ---
 
 ## 📝 Lizenz
-Privates Projekt von Witchcraft Solutions GmbH.
+Projekt von Witchcraft Solutions GmbH, aktuell nicht lizensiert, darüber machen wir uns noch Gedanken.
